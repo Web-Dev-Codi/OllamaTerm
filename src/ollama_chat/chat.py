@@ -41,6 +41,15 @@ except ModuleNotFoundError:  # pragma: no cover - optional runtime detail for lo
 
 LOGGER = logging.getLogger(__name__)
 
+# Tool-use policy appended to the system message when tools are active.
+# Reduces false-positive tool calls on conversational/creative prompts.
+_TOOL_USE_POLICY = (
+    "\n\nTOOL USE POLICY: Only invoke tools when the task explicitly requires "
+    "file, code, or system operations. For conversational questions, creative "
+    "writing, general knowledge, or anything the model can answer directly "
+    "— respond without calling any tools."
+)
+
 # Tools that are I/O-bound and fast - don't need thread pool overhead
 # These tools complete quickly (<10ms) and don't block the event loop
 FAST_SYNC_TOOLS = {
@@ -650,6 +659,21 @@ class OllamaChat:
             formatted_tools = self._format_tools_for_model(tool_registry)
             if formatted_tools:
                 kwargs["tools"] = formatted_tools
+
+        # Inject tool-use policy into the system message when tools are active.
+        # Operates on a shallow copy so MessageStore is never mutated.
+        if formatted_tools:
+            patched_messages = list(request_messages)
+            if patched_messages and patched_messages[0].get("role") == "system":
+                first = dict(patched_messages[0])
+                first["content"] = str(first.get("content", "")) + _TOOL_USE_POLICY
+                patched_messages[0] = first
+            else:
+                patched_messages.insert(
+                    0,
+                    {"role": "system", "content": _TOOL_USE_POLICY.lstrip()},
+                )
+            kwargs["messages"] = patched_messages
 
         # Strip kwargs the SDK doesn't accept (for older ollama versions)
         if self._chat_param_names:

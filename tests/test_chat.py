@@ -77,9 +77,7 @@ class FakeClient:
     async def list(self) -> dict[str, list[dict[str, str]]]:
         return {"models": [{"name": model_name} for model_name in self.models]}
 
-    async def pull(
-        self, model: str, stream: bool = False
-    ) -> dict[str, str]:  # noqa: ARG002
+    async def pull(self, model: str, stream: bool = False) -> dict[str, str]:  # noqa: ARG002
         self.pull_calls.append(model)
         self.models.append(model)
         return {"status": "success"}
@@ -540,9 +538,7 @@ class ChatTests(unittest.IsolatedAsyncioTestCase):
         """
 
         class NoExtrasClient:
-            async def chat(
-                self, model, messages, stream, options=None, **kwargs
-            ):  # noqa: D401, ANN001
+            async def chat(self, model, messages, stream, options=None, **kwargs):  # noqa: D401, ANN001
                 return _chunk_stream([_content_chunk("OK")])
 
             async def list(self) -> dict[str, list[dict[str, str]]]:  # pragma: no cover
@@ -572,6 +568,109 @@ class ChatTests(unittest.IsolatedAsyncioTestCase):
 
         content = "".join(c.text for c in chunks if c.kind == "content")
         self.assertEqual(content, "OK")
+
+
+class TestToolPolicyInjection(unittest.IsolatedAsyncioTestCase):
+    """Verify that a tool-use policy is injected into the system message when tools are active."""
+
+    async def test_policy_injected_when_tools_present(self) -> None:
+        """When formatted_tools is non-empty, the API call includes the policy in the system message."""
+
+        def _fake_tool() -> str:
+            """A fake tool."""
+            return "done"
+
+        registry = ToolRegistry()
+        registry.register(_fake_tool)
+
+        call_count = 0
+
+        class CaptureMsgClient:
+            captured_messages: list[dict] = []
+
+            async def chat(self, model, messages, stream, **kwargs):
+                nonlocal call_count
+                call_count += 1
+                CaptureMsgClient.captured_messages = list(messages)
+                return _chunk_stream([_content_chunk("Once upon a time...")])
+
+        chat = OllamaChat(
+            host="http://localhost:11434",
+            model="test-model",
+            system_prompt="You are helpful.",
+            client=CaptureMsgClient(),
+        )
+
+        chunks = []
+        async for chunk in chat.send_message("tell me a story", tool_registry=registry):
+            chunks.append(chunk)
+
+        system_msgs = [
+            m for m in CaptureMsgClient.captured_messages if m.get("role") == "system"
+        ]
+        self.assertTrue(system_msgs, "No system message was sent")
+        system_content = system_msgs[0]["content"]
+        self.assertIn("TOOL USE POLICY", system_content)
+        self.assertIn("Only invoke tools", system_content)
+
+    async def test_policy_not_injected_when_no_tools(self) -> None:
+        """When no tools are passed, the system message should be unchanged."""
+
+        class CaptureMsgClientNoTools:
+            captured_messages: list[dict] = []
+
+            async def chat(self, model, messages, stream, **kwargs):
+                CaptureMsgClientNoTools.captured_messages = list(messages)
+                return _chunk_stream([_content_chunk("Hello!")])
+
+        chat = OllamaChat(
+            host="http://localhost:11434",
+            model="test-model",
+            system_prompt="You are helpful.",
+            client=CaptureMsgClientNoTools(),
+        )
+
+        chunks = []
+        async for chunk in chat.send_message("hello", tool_registry=None):
+            chunks.append(chunk)
+
+        system_msgs = [
+            m
+            for m in CaptureMsgClientNoTools.captured_messages
+            if m.get("role") == "system"
+        ]
+        if system_msgs:
+            system_content = system_msgs[0]["content"]
+            self.assertNotIn("TOOL USE POLICY", system_content)
+
+    async def test_policy_does_not_mutate_message_store(self) -> None:
+        """Injecting the policy must not corrupt the stored conversation history."""
+
+        def _fake_tool() -> str:
+            """A fake tool."""
+            return "done"
+
+        registry = ToolRegistry()
+        registry.register(_fake_tool)
+
+        class SimpleChatClient:
+            async def chat(self, model, messages, stream, **kwargs):
+                return _chunk_stream([_content_chunk("Answer.")])
+
+        chat = OllamaChat(
+            host="http://localhost:11434",
+            model="test-model",
+            system_prompt="You are helpful.",
+            client=SimpleChatClient(),
+        )
+
+        async for _ in chat.send_message("hello", tool_registry=registry):
+            pass
+
+        # The stored system message must NOT contain the injected policy.
+        system_msgs = [m for m in chat.messages if m.get("role") == "system"]
+        self.assertTrue(system_msgs, "No system message in history")
+        self.assertNotIn("TOOL USE POLICY", system_msgs[0]["content"])
 
 
 if __name__ == "__main__":
