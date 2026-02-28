@@ -28,6 +28,8 @@ class MessageBubble(Vertical):
         padding: 0 1;
         border-left: solid $panel;
         margin-bottom: 1;
+        max-height: 12;
+        overflow-y: auto;
     }
     MessageBubble > #tool-trace {
         color: $text-muted;
