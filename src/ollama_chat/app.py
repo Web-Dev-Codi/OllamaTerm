@@ -414,7 +414,6 @@ class OllamaChatApp(App[None]):
         "interrupt_stream": "Interrupt",
     }
 
-
     def __init__(self) -> None:
         self.config = load_config()
         self.window_title = str(self.config["app"]["title"])
@@ -525,6 +524,7 @@ class OllamaChatApp(App[None]):
                         for item in tools_cfg.get("default_external_directories", [])
                         if str(item).strip()
                     ),
+                    include_web_tools=bool(self.capabilities.web_search_enabled),
                 ),
             )
             self._tool_registry: ToolRegistry | None = build_registry(options)
@@ -553,9 +553,9 @@ class OllamaChatApp(App[None]):
         self.command_manager = CommandManager()
         self._register_all_commands()
         self.theme_manager = ThemeManager(
-            self.config, 
+            self.config,
             app_name=str(self.config["app"]["title"]).lower().replace(" ", "-"),
-            app_author=str(self.config["app"]["class"])
+            app_author=str(self.config["app"]["class"]),
         )
 
         self.stream_manager = StreamManager(
@@ -1112,7 +1112,7 @@ class OllamaChatApp(App[None]):
         """Apply theme settings using ThemeManager and restyle mounted widgets."""
         # Initialize theme system
         self.theme_manager.initialize_theme(self)
-        
+
         # Apply background for custom themes
         try:
             root = self.query_one("#app-root", Container)

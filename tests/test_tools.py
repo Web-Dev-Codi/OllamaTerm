@@ -12,6 +12,7 @@ from ollama_chat.tooling import (
     build_default_registry,
     build_registry,
 )
+from ollama_chat.tools.registry import ToolRegistry as BuiltinToolRegistry
 
 
 def _add(a: int, b: int) -> int:
@@ -182,6 +183,46 @@ def registry_runtime_options(
         max_output_lines=max_output_lines,
         max_output_bytes=max_output_bytes,
     )
+
+
+class TestWebToolGating(unittest.TestCase):
+    """Verify WebSearchTool/WebFetchTool are only included when configured."""
+
+    def test_web_tools_excluded_by_default(self) -> None:
+        """WebSearchTool and WebFetchTool must NOT appear when include_web_tools=False."""
+        reg = BuiltinToolRegistry.build_default(include_web_tools=False)
+        tool_ids = {t.id for t in reg.all()}
+        self.assertNotIn("websearch", tool_ids)
+        self.assertNotIn("webfetch", tool_ids)
+
+    def test_web_tools_included_when_requested(self) -> None:
+        """WebSearchTool and WebFetchTool MUST appear when include_web_tools=True."""
+        reg = BuiltinToolRegistry.build_default(include_web_tools=True)
+        tool_ids = {t.id for t in reg.all()}
+        self.assertIn("websearch", tool_ids)
+        self.assertIn("webfetch", tool_ids)
+
+    def test_build_registry_excludes_web_tools_when_disabled(self) -> None:
+        """build_registry with default ToolRuntimeOptions excludes web tools."""
+        opts = ToolRegistryOptions(
+            enable_builtin_tools=True,
+            runtime_options=ToolRuntimeOptions(include_web_tools=False),
+        )
+        reg = build_registry(opts)
+        names = reg.list_tool_names()
+        self.assertNotIn("websearch", names)
+        self.assertNotIn("webfetch", names)
+
+    def test_build_registry_includes_web_tools_when_enabled(self) -> None:
+        """build_registry with include_web_tools=True includes web tools."""
+        opts = ToolRegistryOptions(
+            enable_builtin_tools=True,
+            runtime_options=ToolRuntimeOptions(include_web_tools=True),
+        )
+        reg = build_registry(opts)
+        names = reg.list_tool_names()
+        self.assertIn("websearch", names)
+        self.assertIn("webfetch", names)
 
 
 if __name__ == "__main__":

@@ -40,6 +40,7 @@ class ToolRuntimeOptions:
     max_read_bytes: int = 200_000
     max_search_results: int = 200
     default_external_directories: tuple[str, ...] = ()
+    include_web_tools: bool = False
 
 
 @dataclass(frozen=True)
@@ -125,8 +126,6 @@ class ToolsPackageAdapter:
 
     def to_specs(self) -> list[ToolSpec]:
         """Convert built-in tool classes to ToolSpec objects."""
-        from .tools.registry import get_registry
-
         # Ensure modules that import `from support import ...` can resolve the local
         # package alias (ollama_chat.support) without modifying their import lines.
         try:
@@ -136,9 +135,13 @@ class ToolsPackageAdapter:
         except Exception:
             pass
         try:
-            from .tools.registry import get_registry  # local/lazy import
+            from .tools.registry import (
+                ToolRegistry as _ToolRegistry,
+            )  # local/lazy import
 
-            tools = get_registry().tools_for_model()
+            tools = _ToolRegistry.build_default(
+                include_web_tools=self._runtime.include_web_tools
+            ).tools_for_model()
         except Exception:
             tools = []
         specs = []

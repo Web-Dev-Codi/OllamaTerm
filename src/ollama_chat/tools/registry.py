@@ -79,7 +79,7 @@ class ToolRegistry:
         return tools
 
     @classmethod
-    def build_default(cls) -> ToolRegistry:
+    def build_default(cls, include_web_tools: bool = False) -> ToolRegistry:
         reg = cls()
         # Built-in tool order roughly as specified
         reg.register(InvalidTool())
@@ -91,10 +91,12 @@ class ToolRegistry:
         reg.register(EditTool())
         reg.register(WriteTool())
         reg.register(TaskTool())
-        reg.register(WebFetchTool())
+        if include_web_tools:
+            reg.register(WebFetchTool())
         reg.register(TodoWriteTool())
         reg.register(TodoReadTool())
-        reg.register(WebSearchTool())
+        if include_web_tools:
+            reg.register(WebSearchTool())
         reg.register(CodeSearchTool())
         reg.register(SkillTool())
         reg.register(ApplyPatchTool())
@@ -111,6 +113,10 @@ _default_registry: ToolRegistry | None = None
 
 
 def get_registry() -> ToolRegistry:
+    # NOTE: This singleton always uses include_web_tools=False.
+    # Web tool gating is handled by ToolsPackageAdapter.to_specs() which calls
+    # build_default(include_web_tools=...) directly. Do not use this singleton
+    # for contexts where web tools may be needed.
     global _default_registry
     if _default_registry is None:
         _default_registry = ToolRegistry.build_default()
