@@ -18,6 +18,9 @@ dependencies = [
     "structlog>=25.5.0",
     "platformdirs>=4.9.2",
     "tomli-w>=1.2.0",
+    "httpx>=0.28.0",
+    "markdownify>=1.2.2",
+    "beautifulsoup4>=4.14.3",
 ]
 
 [project.optional-dependencies]

@@ -441,6 +441,7 @@ class OllamaChatApp(App[None]):
             timeout=int(ollama_cfg["timeout"]),
             max_history_messages=int(ollama_cfg["max_history_messages"]),
             max_context_tokens=int(ollama_cfg["max_context_tokens"]),
+            api_key=str(ollama_cfg.get("api_key", "")),
         )
         self._prompt_presets: dict[str, str] = dict(
             ollama_cfg.get("prompt_presets") or {}

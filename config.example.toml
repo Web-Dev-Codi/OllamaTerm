@@ -12,6 +12,11 @@ system_prompt = "You are a helpful assistant."
 max_history_messages = 200
 max_context_tokens = 4096
 pull_model_on_start = true
+# Ollama API Bearer token for server authentication.
+# Obtain from: https://ollama.com/settings/keys
+# Used when connecting to ollama.com's hosted inference API, or when your
+# local Ollama server is configured to require authentication.
+# api_key = ""
 
 [ui]
 font_size = 14

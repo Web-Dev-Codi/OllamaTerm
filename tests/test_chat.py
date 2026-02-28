@@ -588,6 +588,11 @@ class TestToolPolicyInjection(unittest.IsolatedAsyncioTestCase):
         class CaptureMsgClient:
             captured_messages: list[dict] = []
 
+            async def show(self, model_name: str):
+                from unittest.mock import MagicMock
+
+                return MagicMock(capabilities=None)
+
             async def chat(self, model, messages, stream, **kwargs):
                 nonlocal call_count
                 call_count += 1
@@ -619,6 +624,11 @@ class TestToolPolicyInjection(unittest.IsolatedAsyncioTestCase):
         class CaptureMsgClientNoTools:
             captured_messages: list[dict] = []
 
+            async def show(self, model_name: str):
+                from unittest.mock import MagicMock
+
+                return MagicMock(capabilities=None)
+
             async def chat(self, model, messages, stream, **kwargs):
                 CaptureMsgClientNoTools.captured_messages = list(messages)
                 return _chunk_stream([_content_chunk("Hello!")])
@@ -639,9 +649,9 @@ class TestToolPolicyInjection(unittest.IsolatedAsyncioTestCase):
             for m in CaptureMsgClientNoTools.captured_messages
             if m.get("role") == "system"
         ]
-        if system_msgs:
-            system_content = system_msgs[0]["content"]
-            self.assertNotIn("TOOL USE POLICY", system_content)
+        self.assertTrue(system_msgs, "Expected a system message to be sent")
+        system_content = system_msgs[0]["content"]
+        self.assertNotIn("TOOL USE POLICY", system_content)
 
     async def test_policy_does_not_mutate_message_store(self) -> None:
         """Injecting the policy must not corrupt the stored conversation history."""
@@ -654,6 +664,11 @@ class TestToolPolicyInjection(unittest.IsolatedAsyncioTestCase):
         registry.register(_fake_tool)
 
         class SimpleChatClient:
+            async def show(self, model_name: str):
+                from unittest.mock import MagicMock
+
+                return MagicMock(capabilities=None)
+
             async def chat(self, model, messages, stream, **kwargs):
                 return _chunk_stream([_content_chunk("Answer.")])
 
@@ -671,6 +686,52 @@ class TestToolPolicyInjection(unittest.IsolatedAsyncioTestCase):
         system_msgs = [m for m in chat.messages if m.get("role") == "system"]
         self.assertTrue(system_msgs, "No system message in history")
         self.assertNotIn("TOOL USE POLICY", system_msgs[0]["content"])
+
+
+class TestApiKeyAuth(unittest.TestCase):
+    """Verify that api_key is passed as Bearer token to AsyncClient."""
+
+    def test_api_key_passed_as_header(self) -> None:
+        """When api_key is provided, AsyncClient is created with Authorization header."""
+        from unittest.mock import MagicMock, patch
+
+        with patch("ollama_chat.chat._AsyncClient") as MockAsyncClient:
+            MockAsyncClient.return_value = MagicMock()
+
+            from ollama_chat.chat import OllamaChat
+
+            OllamaChat(
+                host="http://localhost:11434",
+                model="test-model",
+                system_prompt="test",
+                api_key="sk-test-key-123",
+            )
+
+            MockAsyncClient.assert_called_once()
+            call_kwargs = MockAsyncClient.call_args.kwargs
+            headers = call_kwargs.get("headers", {})
+            self.assertIn("authorization", headers)
+            self.assertEqual(headers["authorization"], "Bearer sk-test-key-123")
+
+    def test_no_header_when_no_api_key(self) -> None:
+        """When api_key is empty, no Authorization header is added."""
+        from unittest.mock import MagicMock, patch
+
+        with patch("ollama_chat.chat._AsyncClient") as MockAsyncClient:
+            MockAsyncClient.return_value = MagicMock()
+
+            from ollama_chat.chat import OllamaChat
+
+            OllamaChat(
+                host="http://localhost:11434",
+                model="test-model",
+                system_prompt="test",
+                api_key="",
+            )
+
+            call_kwargs = MockAsyncClient.call_args.kwargs
+            headers = call_kwargs.get("headers", {})
+            self.assertNotIn("authorization", headers)
 
 
 if __name__ == "__main__":

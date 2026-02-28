@@ -66,6 +66,7 @@ class OllamaConfig(BaseModel):
     max_history_messages: int = Field(default=200, ge=1, le=100_000)
     max_context_tokens: int = Field(default=4096, ge=128, le=1_000_000)
     pull_model_on_start: bool = True
+    api_key: str = ""
 
     @field_validator("host", "model", mode="before")
     @classmethod
@@ -82,6 +83,13 @@ class OllamaConfig(BaseModel):
     def _normalize_prompt(cls, value: Any) -> str:
         if not isinstance(value, str):
             raise ValueError("Expected a string value.")
+        return value.strip()
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _normalize_api_key(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise ValueError("api_key must be a string.")
         return value.strip()
 
     @field_validator("active_prompt_preset", mode="before")
@@ -309,7 +317,9 @@ class ToolsConfig(BaseModel):
         normalized: list[str] = []
         for item in value:
             if not isinstance(item, str):
-                raise ValueError("default_external_directories entries must be strings.")
+                raise ValueError(
+                    "default_external_directories entries must be strings."
+                )
             candidate = item.strip()
             if candidate:
                 normalized.append(candidate)
@@ -494,9 +504,7 @@ def load_config(config_path: Path | None = None) -> dict[str, dict[str, Any]]:
         _enforce_private_permissions(target_path)
         try:
             raw_data = tomllib.loads(target_path.read_text(encoding="utf-8"))
-        except (
-            Exception
-        ) as exc:  # noqa: BLE001 - we must not crash on invalid user config.
+        except Exception as exc:  # noqa: BLE001 - we must not crash on invalid user config.
             LOGGER.warning("Failed to parse config at %s: %s", target_path, exc)
             raw_data = {}
 

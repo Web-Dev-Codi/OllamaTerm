@@ -131,6 +131,7 @@ class OllamaChat:
         max_history_messages: int = 200,
         max_context_tokens: int = 4096,
         client: Any | None = None,
+        api_key: str = "",
     ) -> None:
         self.host = host
         self.model = model
@@ -143,7 +144,11 @@ class OllamaChat:
         if client is not None:
             self._client = client
         elif _AsyncClient is not None:
-            self._client = _AsyncClient(host=host, timeout=timeout)
+            client_kwargs: dict[str, Any] = {"host": host, "timeout": timeout}
+            stripped_key = (api_key or "").strip()
+            if stripped_key:
+                client_kwargs["headers"] = {"authorization": f"Bearer {stripped_key}"}
+            self._client = _AsyncClient(**client_kwargs)
         else:
             raise OllamaConnectionError(
                 "The ollama package is not installed. Install dependencies with pip install -e ."
