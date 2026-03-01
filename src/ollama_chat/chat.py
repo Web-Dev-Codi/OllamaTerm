@@ -76,6 +76,15 @@ QUESTION QUALITY GUIDELINES:
 • Frame positively: "Which approach?" not "I don't understand"
 • Questions should be answerable in <10 seconds
 
+FORMAT REQUIREMENTS (CRITICAL):
+• Each question MUST have a 'header' field (short label, max 30 chars)
+• Each question MUST have a 'question' field (full question text)
+• 'options' MUST be a list of objects, NOT strings
+• Each option MUST have both 'label' and 'description' fields
+• Example: {"label": "Redis", "description": "Fast, external, scalable"}
+• WRONG: ["Redis", "Memcached"] ❌
+• CORRECT: [{"label": "Redis", "description": "Fast, external"}, ...] ✓
+
 WHEN NOT TO ASK (rare):
 • Task is completely unambiguous ("write factorial function")
 • User already provided all necessary details in their message

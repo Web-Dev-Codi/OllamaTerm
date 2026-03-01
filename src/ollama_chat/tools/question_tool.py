@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from ..support import question_service
 from .base import ParamsSchema, Tool, ToolContext, ToolResult
@@ -39,6 +39,29 @@ class QuestionTool(Tool):
         "Ask ONE focused question per call. The user will see your question in a modal "
         "dialog and select their preferred option. This suspends execution until answered."
     )
+
+    def format_validation_error(self, error: ValidationError) -> str:
+        """Provide LLM-friendly error message for validation failures."""
+        return (
+            "Question tool validation failed. Please ensure:\n\n"
+            "1. Each question has a 'header' field (short label, max 30 chars)\n"
+            "2. Each question has a 'question' field (full question text)\n"
+            "3. 'options' is a list of objects with 'label' and 'description' fields\n\n"
+            "CORRECT FORMAT:\n"
+            "{\n"
+            '  "questions": [{\n'
+            '    "header": "Database Choice",\n'
+            '    "question": "Which database should I use?",\n'
+            '    "options": [\n'
+            '      {"label": "PostgreSQL", "description": "Relational, ACID compliant"},\n'
+            '      {"label": "MongoDB", "description": "Document-based, flexible schema"}\n'
+            "    ]\n"
+            "  }]\n"
+            "}\n\n"
+            "WRONG FORMAT (options as strings):\n"
+            '  "options": ["PostgreSQL", "MongoDB"]  ❌\n\n'
+            f"Validation error details:\n{error}"
+        )
 
     async def execute(self, params: QuestionParams, ctx: ToolContext) -> ToolResult:
         # Log question usage for tracking and analysis

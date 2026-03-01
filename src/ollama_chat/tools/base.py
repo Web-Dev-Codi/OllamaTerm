@@ -5,11 +5,14 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from functools import cached_property
+import logging
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
 from .truncation import truncate_output
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -230,6 +233,18 @@ class Tool(ABC):
         try:
             params = self.params_schema.model_validate(raw_params)
         except ValidationError as exc:  # pragma: no cover - defensive
+            # Log validation errors for debugging
+            LOGGER.warning(
+                f"Tool '{self.id}' validation error",
+                extra={
+                    "event": "tool.validation_error",
+                    "tool_id": self.id,
+                    "session_id": ctx.session_id,
+                    "agent": ctx.agent,
+                    "error": str(exc),
+                    "raw_params": raw_params,
+                },
+            )
             msg = self.format_validation_error(exc) or str(exc)
             return ToolResult(
                 title=f"{self.id}: invalid parameters",
