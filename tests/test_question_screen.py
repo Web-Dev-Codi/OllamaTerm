@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
-from textual.pilot import Pilot
-
 
 SINGLE_Q = {
     "question": "Which format do you prefer?",
@@ -45,6 +41,7 @@ CUSTOM_Q = {
 async def test_single_select_returns_label() -> None:
     """Selecting an option in single-select mode dismisses with [label]."""
     from textual.app import App
+
     from ollama_chat.screens import QuestionScreen
 
     results: list = []
@@ -71,6 +68,7 @@ async def test_single_select_returns_label() -> None:
 async def test_escape_returns_none() -> None:
     """Pressing Escape dismisses with None."""
     from textual.app import App
+
     from ollama_chat.screens import QuestionScreen
 
     results: list = []
@@ -96,6 +94,7 @@ async def test_escape_returns_none() -> None:
 async def test_multi_select_confirm() -> None:
     """Multi-select: Space toggles, Confirm submits selected labels."""
     from textual.app import App
+
     from ollama_chat.screens import QuestionScreen
 
     results: list = []
@@ -124,6 +123,7 @@ async def test_multi_select_confirm() -> None:
 async def test_custom_entry_visible_when_enabled() -> None:
     """When custom=True, the last option in the list is 'Type your own answer...'."""
     from textual.app import App
+
     from ollama_chat.screens import QuestionScreen
 
     class _App(App):

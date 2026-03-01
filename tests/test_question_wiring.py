@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 
 class TestQuestionWiring(unittest.IsolatedAsyncioTestCase):
@@ -13,7 +13,6 @@ class TestQuestionWiring(unittest.IsolatedAsyncioTestCase):
     async def test_on_question_asked_creates_task(self) -> None:
         """_on_question_asked must schedule _run_question_sequence as an asyncio task."""
         # We test the app method in isolation without booting a full Textual app.
-        import ollama_chat.app as app_module
         from ollama_chat.support import question_service
 
         question_service._pending.clear()
@@ -89,7 +88,6 @@ class TestQuestionWiring(unittest.IsolatedAsyncioTestCase):
                 questions_data = payload["questions"]
                 all_answers: list[list[str]] = []
                 for q in questions_data:
-                    from ollama_chat.screens import QuestionScreen
 
                     # In real app this calls push_screen_wait; here we stub it
                     result = await self.push_screen_wait(None)

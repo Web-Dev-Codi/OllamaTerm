@@ -178,7 +178,7 @@ class SearchTool(Tool):
             "count": len(results.split("\n")) if results else 0,
         }
         if getattr(params, "pattern", None) is not None:
-            meta["pattern"] = getattr(params, "pattern")
+            meta["pattern"] = params.pattern
         return ToolResult(
             title=title,
             output=results,

@@ -8,7 +8,7 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, OptionList, SelectionList, Static
+from textual.widgets import Button, Input, OptionList, SelectionList, Static
 
 
 class InfoScreen(ModalScreen[None]):
