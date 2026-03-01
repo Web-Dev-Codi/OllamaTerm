@@ -52,10 +52,12 @@ from .screens import (
     ConversationPickerScreen,
     ImageAttachScreen,
     InfoScreen,
+    QuestionScreen,
     SimplePickerScreen,
     TextPromptScreen,
     ThemePickerScreen,
 )
+from .support import question_service as _question_service
 from .state import ConnectionState, ConversationState, StateManager
 from .task_manager import TaskManager
 from .tooling import (
@@ -1136,6 +1138,7 @@ class OllamaChatApp(App[None]):
 
             support_bus.subscribe("file.edited", self._on_support_file_event)
             support_bus.subscribe("file.watcher.updated", self._on_support_file_event)
+            support_bus.subscribe("question.asked", self._on_question_asked)
         except Exception:
             pass
 
@@ -1157,6 +1160,37 @@ class OllamaChatApp(App[None]):
                 pass
         except Exception:
             pass
+
+    def _on_question_asked(self, event_name: str, payload: dict[str, Any]) -> None:
+        """Handle question.asked event from question_service.
+
+        Schedules _run_question_sequence as an asyncio task so the async
+        push_screen_wait calls can run while the question_service future waits.
+        """
+        asyncio.create_task(self._run_question_sequence(payload))
+
+    async def _run_question_sequence(self, payload: dict[str, Any]) -> None:
+        """Show QuestionScreen modals sequentially and reply to question_service."""
+        qid: str = payload.get("id", "")
+        questions: list[dict[str, Any]] = payload.get("questions", [])
+        all_answers: list[list[str]] = []
+
+        for q in questions:
+            try:
+                result: list[str] | None = await self.push_screen_wait(
+                    QuestionScreen(q)
+                )
+            except Exception:
+                result = None
+            all_answers.append(result if result is not None else [])
+
+        try:
+            _question_service.reply(qid, all_answers)
+        except Exception as exc:
+            LOGGER.warning(
+                "app.question.reply_failed",
+                extra={"qid": qid, "error": str(exc)},
+            )
 
     @property
     def show_timestamps(self) -> bool:

@@ -8,7 +8,7 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, OptionList, Static
+from textual.widgets import Button, Input, Label, OptionList, SelectionList, Static
 
 
 class InfoScreen(ModalScreen[None]):
@@ -353,7 +353,7 @@ class ThemePickerScreen(ModalScreen[str | None]):
         with Container(id="theme-picker-dialog"):
             yield Static("Select a theme", id="theme-picker-title")
             yield OptionList(*self._theme_names, id="theme-options")
-            
+
             # Theme preview area
             with Vertical(id="theme-preview"):
                 yield Static("Theme preview will appear here", id="preview-text")
@@ -364,7 +364,7 @@ class ThemePickerScreen(ModalScreen[str | None]):
                     yield Static("Success", id="color-swatch-success")
                     yield Static("Warning", id="color-swatch-warning")
                     yield Static("Error", id="color-swatch-error")
-            
+
             yield Static("Enter/click to select | Esc to cancel", id="theme-help")
 
     def on_mount(self) -> None:
@@ -398,23 +398,23 @@ class ThemePickerScreen(ModalScreen[str | None]):
         """Update the theme preview with colors from the highlighted theme."""
         options = self.query_one("#theme-options", OptionList)
         preview_text = self.query_one("#preview-text", Static)
-        
+
         try:
             highlighted_index = options.highlighted
             if highlighted_index is None or highlighted_index >= len(self._theme_names):
                 return
-                
+
             theme_name = self._theme_names[highlighted_index]
             theme = self._themes[theme_name]
-            
+
             # Update preview text
             is_dark = "Dark" if getattr(theme, "dark", True) else "Light"
             preview_text.update(f"Theme: {theme_name} ({is_dark})")
-            
+
             # Update color swatches
             swatches = self.query_one("#color-swatches", Horizontal)
             swatches.remove_children()
-            
+
             colors = [
                 ("Primary", getattr(theme, "primary", "#000000")),
                 ("Secondary", getattr(theme, "secondary", "#000000")),
@@ -423,17 +423,185 @@ class ThemePickerScreen(ModalScreen[str | None]):
                 ("Warning", getattr(theme, "warning", "#000000")),
                 ("Error", getattr(theme, "error", "#000000")),
             ]
-            
+
             for label, color in colors:
                 swatch_id = f"color-swatch-{label.lower()}"
                 swatch = Static(label, id=swatch_id)
                 swatch.styles.background = color
                 swatch.styles.color = "#ffffff"  # White text for contrast
                 swatches.mount(swatch)
-                
+
         except Exception:
             preview_text.update("Preview unavailable")
 
     def on_key(self, event: Any) -> None:  # noqa: ANN401
         if str(getattr(event, "key", "")).lower() == "escape":
             self.dismiss(None)
+
+
+_CUSTOM_LABEL = "Type your own answer..."
+
+
+class QuestionScreen(ModalScreen["list[str] | None"]):
+    """Modal that presents a structured question from the LLM and collects the answer.
+
+    Dismisses with:
+      list[str] — the selected/typed answer(s)
+      None      — user cancelled (Escape or Cancel button)
+    """
+
+    CSS = """
+    QuestionScreen {
+        align: center middle;
+    }
+
+    #question-dialog {
+        width: 70;
+        max-width: 110;
+        max-height: 36;
+        padding: 1 2;
+        border: round $accent;
+        background: $surface;
+    }
+
+    #question-header {
+        text-style: bold;
+        color: $accent;
+        padding-bottom: 1;
+    }
+
+    #question-text {
+        padding-bottom: 1;
+    }
+
+    #question-options {
+        height: auto;
+        max-height: 14;
+        border: none;
+    }
+
+    #question-custom-input {
+        margin-top: 1;
+        display: none;
+    }
+
+    #question-custom-input.visible {
+        display: block;
+    }
+
+    #question-actions {
+        dock: bottom;
+        height: 3;
+        align: right middle;
+        padding-top: 1;
+    }
+
+    #question-help {
+        color: $text-muted;
+        padding-top: 1;
+    }
+    """
+
+    BINDINGS = [("escape", "cancel", "Cancel")]
+
+    def __init__(self, question_info: dict) -> None:
+        super().__init__()
+        self._q = question_info
+        self._multiple: bool = bool(question_info.get("multiple", False))
+        self._custom: bool = bool(question_info.get("custom", False))
+        self._options: list[dict] = list(question_info.get("options", []))
+        self._custom_selected: bool = (
+            False  # True when custom input is active in multi mode
+        )
+
+    def compose(self) -> ComposeResult:
+        with Container(id="question-dialog"):
+            yield Static(self._q.get("header", "Question"), id="question-header")
+            yield Static(self._q.get("question", ""), id="question-text")
+
+            if self._multiple:
+                items = [(opt["label"], opt["label"], False) for opt in self._options]
+                if self._custom:
+                    items.append((_CUSTOM_LABEL, _CUSTOM_LABEL, False))
+                yield SelectionList(*items, id="question-options")
+                with Horizontal(id="question-actions"):
+                    yield Button("Confirm", id="question-confirm", variant="primary")
+                    yield Button("Cancel", id="question-cancel")
+            else:
+                option_labels = [opt["label"] for opt in self._options]
+                if self._custom:
+                    option_labels.append(_CUSTOM_LABEL)
+                yield OptionList(*option_labels, id="question-options")
+
+            yield Input(
+                placeholder="Type your answer and press Enter\u2026",
+                id="question-custom-input",
+            )
+
+            if self._multiple:
+                yield Static(
+                    "Space=toggle  Enter/Confirm=submit  Esc=cancel",
+                    id="question-help",
+                )
+            else:
+                yield Static(
+                    "Enter=select  Esc=cancel",
+                    id="question-help",
+                )
+
+    def on_mount(self) -> None:
+        self.query_one("#question-options").focus()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    # ── Single-select ────────────────────────────────────────────────────────
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        if self._multiple:
+            return  # handled by button
+        label = str(event.option.prompt)
+        if label == _CUSTOM_LABEL:
+            self._show_custom_input()
+        else:
+            self.dismiss([label])
+
+    # ── Multi-select ─────────────────────────────────────────────────────────
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        if event.button.id == "question-cancel":
+            self.dismiss(None)
+        elif event.button.id == "question-confirm":
+            self._submit_multi()
+
+    def _submit_multi(self) -> None:
+        sl: SelectionList = self.query_one("#question-options", SelectionList)
+        selected_values: list[str] = [str(v) for v in sl.selected]
+        if _CUSTOM_LABEL in selected_values:
+            # Switch to custom input; will merge on Input.Submitted
+            selected_values.remove(_CUSTOM_LABEL)
+            self._custom_selected = True
+            self._pending_multi = selected_values
+            self._show_custom_input()
+        else:
+            self.dismiss(selected_values if selected_values else [])
+
+    # ── Custom text input ─────────────────────────────────────────────────────
+
+    def _show_custom_input(self) -> None:
+        inp: Input = self.query_one("#question-custom-input", Input)
+        inp.add_class("visible")
+        inp.focus()
+        # Hide the option/selection list so input is prominent
+        self.query_one("#question-options").display = False
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        typed = event.value.strip()
+        if self._multiple and hasattr(self, "_pending_multi"):
+            answers = list(self._pending_multi)
+            if typed:
+                answers.append(typed)
+            self.dismiss(answers if answers else [])
+        else:
+            self.dismiss([typed] if typed else [])

@@ -39,12 +39,14 @@ async def ask(
     try:
         await bus.publish(
             "question.asked",
-            {"id": qid, "session_id": session_id, "questions": questions, "tool": tool or {}},
+            {
+                "id": qid,
+                "session_id": session_id,
+                "questions": questions,
+                "tool": tool or {},
+            },
         )
-        try:
-            return await asyncio.wait_for(fut, timeout=0.5)
-        except TimeoutError:
-            return [[] for _ in questions]
+        return await asyncio.wait_for(fut, timeout=None)
     finally:
         _pending.pop(qid, None)
 
