@@ -439,9 +439,6 @@ class ThemePickerScreen(ModalScreen[str | None]):
             self.dismiss(None)
 
 
-_CUSTOM_LABEL = "Type your own answer..."
-
-
 class QuestionScreen(ModalScreen["list[str] | None"]):
     """Modal that presents a structured question from the LLM and collects the answer.
 
@@ -449,6 +446,8 @@ class QuestionScreen(ModalScreen["list[str] | None"]):
       list[str] — the selected/typed answer(s)
       None      — user cancelled (Escape or Cancel button)
     """
+
+    CUSTOM_LABEL = "Type your own answer..."
 
     CSS = """
     QuestionScreen {
@@ -513,6 +512,7 @@ class QuestionScreen(ModalScreen["list[str] | None"]):
         self._custom_selected: bool = (
             False  # True when custom input is active in multi mode
         )
+        self._pending_multi: list[str] = []  # Accumulates selections in multi mode
 
     def compose(self) -> ComposeResult:
         with Container(id="question-dialog"):
@@ -522,7 +522,7 @@ class QuestionScreen(ModalScreen["list[str] | None"]):
             if self._multiple:
                 items = [(opt["label"], opt["label"], False) for opt in self._options]
                 if self._custom:
-                    items.append((_CUSTOM_LABEL, _CUSTOM_LABEL, False))
+                    items.append((self.CUSTOM_LABEL, self.CUSTOM_LABEL, False))
                 yield SelectionList(*items, id="question-options")
                 with Horizontal(id="question-actions"):
                     yield Button("Confirm", id="question-confirm", variant="primary")
@@ -530,7 +530,7 @@ class QuestionScreen(ModalScreen["list[str] | None"]):
             else:
                 option_labels = [opt["label"] for opt in self._options]
                 if self._custom:
-                    option_labels.append(_CUSTOM_LABEL)
+                    option_labels.append(self.CUSTOM_LABEL)
                 yield OptionList(*option_labels, id="question-options")
 
             yield Input(
@@ -561,7 +561,7 @@ class QuestionScreen(ModalScreen["list[str] | None"]):
         if self._multiple:
             return  # handled by button
         label = str(event.option.prompt)
-        if label == _CUSTOM_LABEL:
+        if label == self.CUSTOM_LABEL:
             self._show_custom_input()
         else:
             self.dismiss([label])
@@ -578,9 +578,9 @@ class QuestionScreen(ModalScreen["list[str] | None"]):
     def _submit_multi(self) -> None:
         sl: SelectionList = self.query_one("#question-options", SelectionList)
         selected_values: list[str] = [str(v) for v in sl.selected]
-        if _CUSTOM_LABEL in selected_values:
+        if self.CUSTOM_LABEL in selected_values:
             # Switch to custom input; will merge on Input.Submitted
-            selected_values.remove(_CUSTOM_LABEL)
+            selected_values.remove(self.CUSTOM_LABEL)
             self._custom_selected = True
             self._pending_multi = selected_values
             self._show_custom_input()
@@ -598,7 +598,7 @@ class QuestionScreen(ModalScreen["list[str] | None"]):
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         typed = event.value.strip()
-        if self._multiple and hasattr(self, "_pending_multi"):
+        if self._multiple:
             answers = list(self._pending_multi)
             if typed:
                 answers.append(typed)

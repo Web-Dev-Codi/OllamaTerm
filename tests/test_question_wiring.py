@@ -75,7 +75,6 @@ class TestQuestionWiring(unittest.IsolatedAsyncioTestCase):
         ]
 
         replied: list = []
-        original_reply = question_service.reply
 
         def _mock_reply(qid, answers):
             replied.append((qid, answers))

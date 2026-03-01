@@ -50,6 +50,88 @@ _TOOL_USE_POLICY = (
     "— respond without calling any tools."
 )
 
+# Question-asking policy for clarifying ambiguous requests.
+# Calibrated for "liberal" usage (40-60% question rate) with models ≤14B params.
+# Supports: Qwen 3, Llama 3.1 8B, Mistral Nemo 12B, DeepSeek Coder 6.7B, Phi-3.5 Mini.
+_QUESTION_USE_POLICY = """
+
+CLARIFYING QUESTIONS POLICY:
+You have access to a 'question' tool. Use it proactively when:
+
+ALWAYS ASK WHEN:
+• User request is ambiguous ("fix the bug", "add auth", "optimize code")
+• Multiple valid implementation approaches exist
+• Important technology/library choices need to be made
+• Destructive operations without clear scope ("delete files", "remove code")
+• Parameters are missing ("add caching" - which backend? "deploy" - where?)
+• File/module targets are unclear ("refactor the handler" - which one?)
+• Configuration values are needed (ports, URLs, API keys)
+• User intent could mean different things
+
+QUESTION QUALITY GUIDELINES:
+• Provide 2-5 specific, actionable options
+• Make options mutually exclusive when possible
+• Enable 'custom' for unique user requirements
+• Ask ONE question at a time for complex decisions
+• Frame positively: "Which approach?" not "I don't understand"
+• Questions should be answerable in <10 seconds
+
+WHEN NOT TO ASK (rare):
+• Task is completely unambiguous ("write factorial function")
+• User already provided all necessary details in their message
+• The answer is obvious from recent conversation context
+
+IMPORTANT: It's better to ask and get it right than to guess and waste user time.
+"""
+
+# Few-shot examples showing proper question-asking behavior.
+# These concrete examples help smaller models (≤14B) understand when and how to ask.
+_QUESTION_EXAMPLES = """
+
+EXAMPLES OF PROPER QUESTION-ASKING:
+
+Example 1 - Ambiguous Code Target:
+User: "Refactor the database connection code"
+You (thinking): "Multiple files handle DB connections. Need to ask which."
+You (action): Call question tool with:
+  question: "Which database connection code should I refactor?"
+  options: [
+    "Main connection pool (db/pool.py)",
+    "ORM models (models/base.py)",
+    "Redis cache connection (cache/redis.py)",
+    "All DB-related code"
+  ]
+User: "Main connection pool"
+You: "I'll refactor the connection pool in db/pool.py focusing on connection reuse and error handling..."
+
+Example 2 - Technology Choice:
+User: "Add caching to the API endpoints"
+You (thinking): "Many caching strategies exist. Should ask."
+You (action): Call question tool with:
+  question: "Which caching backend should I use?"
+  options: [
+    "Redis (fast, external, scalable)",
+    "Memcached (simple, in-memory)",
+    "In-memory Python dict (no dependencies)",
+    "Database query caching (SQLAlchemy)"
+  ]
+User: "Redis"
+You: "I'll integrate Redis caching with redis-py. I'll add caching decorators to expensive endpoints..."
+
+Example 3 - Clear Task (No Question Needed):
+User: "Write a function to calculate the factorial of a number"
+You (thinking): "This is unambiguous. Input: integer. Output: factorial. No question needed."
+You (action): Write the code directly:
+```python
+def factorial(n: int) -> int:
+    if n < 0:
+        raise ValueError("Factorial undefined for negative numbers")
+    if n <= 1:
+        return 1
+    return n * factorial(n - 1)
+```
+"""
+
 # Tools that are I/O-bound and fast - don't need thread pool overhead
 # These tools complete quickly (<10ms) and don't block the event loop
 FAST_SYNC_TOOLS = {
@@ -668,15 +750,30 @@ class OllamaChat:
         # Inject tool-use policy into the system message when tools are active.
         # Operates on a shallow copy so MessageStore is never mutated.
         if formatted_tools:
+            # Build policy text - start with base tool use policy
+            policy_text = _TOOL_USE_POLICY
+
+            # Check if question tool is available in this request
+            has_question_tool = any(
+                t.get("function", {}).get("name") == "question" for t in formatted_tools
+            )
+
+            # Add question-specific guidance if tool is present
+            # This is injected dynamically per-request to support model switching
+            if has_question_tool:
+                policy_text += _QUESTION_USE_POLICY
+                policy_text += _QUESTION_EXAMPLES
+
             patched_messages = list(request_messages)
             if patched_messages and patched_messages[0].get("role") == "system":
                 first = dict(patched_messages[0])
-                first["content"] = str(first.get("content", "")) + _TOOL_USE_POLICY
+                # Append after user's custom system prompt (Option A per user request)
+                first["content"] = str(first.get("content", "")) + policy_text
                 patched_messages[0] = first
             else:
                 patched_messages.insert(
                     0,
-                    {"role": "system", "content": _TOOL_USE_POLICY.lstrip()},
+                    {"role": "system", "content": policy_text.lstrip()},
                 )
             kwargs["messages"] = patched_messages
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-import time
 from typing import Any
+import uuid
 
 from .bus import bus
 
@@ -19,7 +19,8 @@ _pending: dict[str, _Pending] = {}
 
 
 def _new_id(prefix: str = "q") -> str:
-    return f"{prefix}_{int(time.time() * 1000)}"
+    """Generate a unique question ID using UUID to ensure uniqueness."""
+    return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
 async def ask(
@@ -30,8 +31,16 @@ async def ask(
 ) -> list[list[str]]:
     """Publish a question event and await an answer.
 
-    In this standalone implementation, if no reply is provided within a short
-    timeout, an empty answer is returned to avoid deadlock.
+    This function waits indefinitely (timeout=None) for a reply. The UI must
+    call reply() to resolve the future and unblock tool execution.
+
+    Args:
+        session_id: The session requesting the question
+        questions: List of question dictionaries with header, question, options, etc.
+        tool: Optional tool metadata (message_id, call_id) for tracing/debugging
+
+    Returns:
+        List of answers, one per question. Each answer is a list of selected strings.
     """
     qid = _new_id("question")
     fut: asyncio.Future = asyncio.get_running_loop().create_future()
