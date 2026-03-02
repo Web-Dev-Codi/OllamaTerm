@@ -61,7 +61,19 @@ async def ask(
 
 
 def reply(question_id: str, answers: list[list[str]]) -> None:
-    """Programmatically reply to a pending question (tests / UI)."""
+    """Programmatically reply to a pending question (tests / UI).
+
+    The associated Future may be tied to an event loop running in a different
+    thread (e.g. when tools execute in a worker thread). Use the Future's
+    loop.call_soon_threadsafe to resolve it safely without assuming the
+    current thread or event loop.
+    """
     item = _pending.get(question_id)
-    if item and not item.future.done():
+    if not item or item.future.done():
+        return
+
+    loop = item.future.get_loop()
+    if loop.is_running():
+        loop.call_soon_threadsafe(item.future.set_result, answers)
+    else:
         item.future.set_result(answers)

@@ -142,7 +142,9 @@ def factorial(n: int) -> int:
 """
 
 # Tools that are I/O-bound and fast - don't need thread pool overhead
-# These tools complete quickly (<10ms) and don't block the event loop
+# These tools complete quickly (<10ms) and don't block the event loop.
+# NOTE: Tools that may wait on user interaction (e.g. "question") MUST NOT be
+# listed here, otherwise they will block the Textual event loop and freeze the UI.
 FAST_SYNC_TOOLS = {
     "read",
     "write",
@@ -152,7 +154,6 @@ FAST_SYNC_TOOLS = {
     "ls",
     "list",
     "invalid",
-    "question",
     "todo_read",
     "todo_write",
 }
