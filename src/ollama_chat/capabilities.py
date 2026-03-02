@@ -50,7 +50,7 @@ class CapabilityContext:
             show_thinking=bool(cap_cfg.get("show_thinking", True)),
             web_search_enabled=bool(cap_cfg.get("web_search_enabled", False)),
             web_search_api_key=str(cap_cfg.get("web_search_api_key", "")),
-            max_tool_iterations=int(cap_cfg.get("max_tool_iterations", 10)),
+            max_tool_iterations=int(cap_cfg.get("max_tool_iterations", 20)),
         )
 
 

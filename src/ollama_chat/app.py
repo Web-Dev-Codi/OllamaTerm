@@ -1192,6 +1192,9 @@ class OllamaChatApp(App[None]):
         # main Textual thread, regardless of which thread published the event.
         try:
             self.call_from_thread(_start_question_worker)
+        except RuntimeError:
+            # Fallback for call sites already running on the app loop.
+            self.run_worker(self._run_question_sequence(payload))
         except Exception as exc:  # pragma: no cover - defensive logging
             LOGGER.debug(
                 "app.question_worker.start_failed",
@@ -1207,6 +1210,12 @@ class OllamaChatApp(App[None]):
         for q in questions:
             try:
                 result = await self._ask_inline_question(q)
+            except asyncio.CancelledError:
+                LOGGER.debug(
+                    "app.question_sequence.cancelled",
+                    extra={"qid": qid},
+                )
+                break
             except Exception as exc:
                 LOGGER.debug(
                     "app.question_inline.failed",
@@ -1214,6 +1223,9 @@ class OllamaChatApp(App[None]):
                 )
                 result = None
             all_answers.append(result if result is not None else [])
+
+        if len(all_answers) < len(questions):
+            all_answers.extend([[] for _ in range(len(questions) - len(all_answers))])
 
         try:
             question_service.reply(qid, all_answers)
@@ -1228,7 +1240,30 @@ class OllamaChatApp(App[None]):
         ask_widget = self._w_ask_question or self.query_one(AskQuestionWidget)
         input_box.display = False
         ask_widget.display = True
-        ask_widget.query_one("#aq-options", OptionList).focus()
+
+        def _focus_question_controls() -> None:
+            try:
+                options = ask_widget.query_one("#aq-options", OptionList)
+                if options.option_count:
+                    options.focus()
+                    return
+            except Exception:
+                pass
+
+            try:
+                custom_input = ask_widget.query_one("#aq-custom-input", Input)
+                if custom_input.display:
+                    custom_input.focus()
+                    return
+            except Exception:
+                pass
+
+            try:
+                ask_widget.focus()
+            except Exception:
+                return
+
+        self.call_after_refresh(_focus_question_controls)
 
     def _restore_input(self) -> None:
         ask_widget = self._w_ask_question or self.query_one(AskQuestionWidget)
@@ -1273,8 +1308,16 @@ class OllamaChatApp(App[None]):
         ask_widget.load_question(question, options, custom=custom)
         self._show_question_widget()
 
-        answer = await self._question_answer_queue.get()
-        self._restore_input()
+        try:
+            answer = await self._question_answer_queue.get()
+        finally:
+            try:
+                self._restore_input()
+            except Exception as exc:
+                LOGGER.debug(
+                    "app.question.restore_input_failed",
+                    extra={"error": str(exc)},
+                )
 
         if answer is None:
             return []
@@ -1639,6 +1682,14 @@ class OllamaChatApp(App[None]):
 
     async def action_interrupt_stream(self) -> None:
         """Cancel an in-flight assistant response (delegates to StreamManager)."""
+        try:
+            ask_widget = self._w_ask_question or self.query_one(AskQuestionWidget)
+            if ask_widget.display:
+                self._question_answer_queue.put_nowait(None)
+                return
+        except Exception:
+            pass
+
         interrupted = await self.stream_manager.interrupt_stream(self.chat.model)
         if interrupted:
             self._update_status_bar()

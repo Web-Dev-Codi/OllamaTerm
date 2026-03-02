@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.events import Key
 from textual.message import Message
 from textual.widget import Widget
@@ -11,6 +12,10 @@ from textual.widgets.option_list import Option
 
 
 class AskQuestionWidget(Widget):
+    BINDINGS: ClassVar[list[Binding]] = [
+        Binding("escape", "cancel", "Cancel question", show=False)
+    ]
+
     DEFAULT_CSS: ClassVar[str] = """
     AskQuestionWidget {
         display: none;
@@ -99,6 +104,9 @@ class AskQuestionWidget(Widget):
     def _post_answer(self, value: str | None) -> None:
         self.post_message(self.Answered(value))
 
+    def action_cancel(self) -> None:
+        self._post_answer(None)
+
     def _handle_number_key(self, key: str) -> bool:
         if not key.isdigit():
             return False
@@ -115,11 +123,6 @@ class AskQuestionWidget(Widget):
         return True
 
     def on_key(self, event: Key) -> None:
-        if event.key == "escape":
-            event.stop()
-            self._post_answer(None)
-            return
-
         if self._handle_number_key(event.key):
             event.stop()
             return
