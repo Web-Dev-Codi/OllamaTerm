@@ -52,7 +52,6 @@ from .screens import (
     ConversationPickerScreen,
     ImageAttachScreen,
     InfoScreen,
-    QuestionScreen,
     SimplePickerScreen,
     TextPromptScreen,
     ThemePickerScreen,
@@ -70,6 +69,7 @@ from .tooling import (
 )
 from .tools.base import ToolContext
 from .widgets.activity_bar import ActivityBar
+from .widgets.ask_question_widget import AskQuestionWidget
 from .widgets.conversation import ConversationView
 from .widgets.input_box import InputBox
 from .widgets.message import MessageBubble
@@ -473,6 +473,10 @@ class OllamaChatApp(App[None]):
         self._w_activity: ActivityBar | None = None
         self._w_status: StatusBar | None = None
         self._w_conversation: ConversationView | None = None
+        self._w_input_box: InputBox | None = None
+        self._w_ask_question: AskQuestionWidget | None = None
+
+        self._question_answer_queue: asyncio.Queue[str | None] = asyncio.Queue()
 
         self._slash_commands: list[tuple[str, str]] = [
             ("/image <path>", "Attach image from filesystem"),
@@ -802,6 +806,7 @@ class OllamaChatApp(App[None]):
         with Container(id="app-root"):
             yield ConversationView(id="conversation")
             yield InputBox()
+            yield AskQuestionWidget()
             yield StatusBar(id="status_bar")
             yield ActivityBar(
                 shortcut_hints="ctrl+p commands",
@@ -931,6 +936,8 @@ class OllamaChatApp(App[None]):
         self._w_activity = self.query_one("#activity_bar", ActivityBar)
         self._w_status = self.query_one("#status_bar", StatusBar)
         self._w_conversation = self.query_one(ConversationView)
+        self._w_input_box = self.query_one(InputBox)
+        self._w_ask_question = self.query_one(AskQuestionWidget)
 
         attach_button = self.query_one("#attach_button", Button)
         self._w_input.disabled = True
@@ -1192,19 +1199,17 @@ class OllamaChatApp(App[None]):
             )
 
     async def _run_question_sequence(self, payload: dict[str, Any]) -> None:
-        """Show QuestionScreen modals sequentially and reply to question_service."""
+        """Show inline AskQuestionWidget sequentially and reply to question_service."""
         qid: str = payload.get("id", "")
         questions: list[dict[str, Any]] = payload.get("questions", [])
         all_answers: list[list[str]] = []
 
         for q in questions:
             try:
-                result: list[str] | None = await self.push_screen_wait(
-                    QuestionScreen(q)
-                )
+                result = await self._ask_inline_question(q)
             except Exception as exc:
                 LOGGER.debug(
-                    "app.question_screen.failed",
+                    "app.question_inline.failed",
                     extra={"qid": qid, "error": str(exc)},
                 )
                 result = None
@@ -1217,6 +1222,73 @@ class OllamaChatApp(App[None]):
                 "app.question.reply_failed",
                 extra={"qid": qid, "error": str(exc)},
             )
+
+    def _show_question_widget(self) -> None:
+        input_box = self._w_input_box or self.query_one(InputBox)
+        ask_widget = self._w_ask_question or self.query_one(AskQuestionWidget)
+        input_box.display = False
+        ask_widget.display = True
+        ask_widget.query_one("#aq-options", OptionList).focus()
+
+    def _restore_input(self) -> None:
+        ask_widget = self._w_ask_question or self.query_one(AskQuestionWidget)
+        input_box = self._w_input_box or self.query_one(InputBox)
+        ask_widget.display = False
+        input_box.display = True
+        input_widget = self._w_input or self.query_one("#message_input", Input)
+        input_widget.focus()
+
+    def _drain_answer_queue(self) -> None:
+        while True:
+            try:
+                self._question_answer_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+
+    async def _ask_inline_question(self, question_info: dict[str, Any]) -> list[str] | None:
+        question = str(question_info.get("question", "")).strip()
+        header = str(question_info.get("header", "Assistant Question")).strip()
+        options_raw = question_info.get("options")
+        custom = bool(question_info.get("custom", True))
+
+        options: list[str] = []
+        if isinstance(options_raw, list):
+            for item in options_raw:
+                if isinstance(item, dict):
+                    label = str(item.get("label", "")).strip()
+                    if label:
+                        options.append(label)
+                elif isinstance(item, str):
+                    label = item.strip()
+                    if label:
+                        options.append(label)
+
+        if not question:
+            return []
+
+        ask_widget = self._w_ask_question or self.query_one(AskQuestionWidget)
+        ask_widget.border_title = header or "Assistant Question"
+
+        self._drain_answer_queue()
+        ask_widget.load_question(question, options, custom=custom)
+        self._show_question_widget()
+
+        answer = await self._question_answer_queue.get()
+        self._restore_input()
+
+        if answer is None:
+            return []
+
+        value = str(answer).strip()
+        if not value:
+            return []
+        return [value]
+
+    async def on_ask_question_widget_answered(
+        self, message: AskQuestionWidget.Answered
+    ) -> None:
+        message.stop()
+        self._question_answer_queue.put_nowait(message.value)
 
     @property
     def show_timestamps(self) -> bool:

@@ -195,6 +195,27 @@ class TestWebToolGating(unittest.TestCase):
         self.assertNotIn("websearch", tool_ids)
         self.assertNotIn("webfetch", tool_ids)
 
+    def test_ask_user_question_is_included_and_question_is_deprecated(self) -> None:
+        """ask_user_question must be present; legacy question tool must not be registered."""
+        reg = BuiltinToolRegistry.build_default(include_web_tools=False)
+        tool_ids = {t.id for t in reg.all()}
+        self.assertIn("ask_user_question", tool_ids)
+        self.assertNotIn("question", tool_ids)
+
+        schema = reg.build_ollama_tools()
+        ask_tool = next(
+            tool
+            for tool in schema
+            if tool.get("function", {}).get("name") == "ask_user_question"
+        )
+        params = ask_tool["function"]["parameters"]
+        self.assertEqual(params["type"], "object")
+        self.assertIn("options", params["properties"])
+
+        options_schema = params["properties"]["options"]
+        self.assertEqual(options_schema["type"], "array")
+        self.assertEqual(options_schema["items"]["type"], "string")
+
     def test_web_tools_included_when_requested(self) -> None:
         """WebSearchTool and WebFetchTool MUST appear when include_web_tools=True."""
         reg = BuiltinToolRegistry.build_default(include_web_tools=True)

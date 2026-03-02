@@ -1,86 +1,63 @@
-"""Unit tests for QuestionScreen modal."""
+"""Unit tests for AskQuestionWidget inline question UI."""
 
 from __future__ import annotations
 
 import pytest
 
-SINGLE_Q = {
-    "question": "Which format do you prefer?",
-    "header": "Format",
-    "options": [
-        {"label": "JSON", "description": "Machine-readable"},
-        {"label": "YAML", "description": "Human-readable"},
-    ],
-    "multiple": False,
-    "custom": False,
-}
-
-MULTI_Q = {
-    "question": "Pick all that apply",
-    "header": "Multi",
-    "options": [
-        {"label": "A", "description": "Option A"},
-        {"label": "B", "description": "Option B"},
-    ],
-    "multiple": True,
-    "custom": False,
-}
-
-CUSTOM_Q = {
-    "question": "Name the tool",
-    "header": "Tool",
-    "options": [
-        {"label": "pytest", "description": "Python test runner"},
-    ],
-    "multiple": False,
-    "custom": True,
-}
-
 
 @pytest.mark.asyncio
-async def test_single_select_returns_label() -> None:
-    """Selecting an option in single-select mode dismisses with [label]."""
+async def test_enter_selects_first_option() -> None:
+    """Pressing Enter on the OptionList posts Answered() with the highlighted option."""
     from textual.app import App
 
-    from ollama_chat.screens import QuestionScreen
+    from ollama_chat.widgets.ask_question_widget import AskQuestionWidget
 
     results: list = []
 
     class _App(App):
-        def on_mount(self) -> None:
-            async def _show() -> None:
-                result = await self.push_screen_wait(QuestionScreen(SINGLE_Q))
-                results.append(result)
-                self.exit()
+        def compose(self):  # type: ignore[override]
+            yield AskQuestionWidget()
 
-            self.run_worker(_show())
+        def on_mount(self) -> None:
+            w = self.query_one(AskQuestionWidget)
+            w.display = True
+            w.load_question("Which format do you prefer?", ["JSON", "YAML"], custom=False)
+            w.query_one("#aq-options").focus()
+
+        async def on_ask_question_widget_answered(self, message: AskQuestionWidget.Answered) -> None:
+            results.append(message.value)
+            self.exit()
 
     async with _App().run_test(headless=True) as pilot:
         await pilot.pause()
-        # Highlight first option and press Enter
         await pilot.press("enter")
         await pilot.pause()
 
-    assert results == [["JSON"]]
+    assert results == ["JSON"]
 
 
 @pytest.mark.asyncio
-async def test_escape_returns_none() -> None:
-    """Pressing Escape dismisses with None."""
+async def test_escape_posts_none() -> None:
+    """Pressing Escape cancels and posts Answered(None)."""
     from textual.app import App
 
-    from ollama_chat.screens import QuestionScreen
+    from ollama_chat.widgets.ask_question_widget import AskQuestionWidget
 
     results: list = []
 
     class _App(App):
-        def on_mount(self) -> None:
-            async def _show() -> None:
-                result = await self.push_screen_wait(QuestionScreen(SINGLE_Q))
-                results.append(result)
-                self.exit()
+        def compose(self):  # type: ignore[override]
+            yield AskQuestionWidget()
 
-            self.run_worker(_show())
+        def on_mount(self) -> None:
+            w = self.query_one(AskQuestionWidget)
+            w.display = True
+            w.load_question("Pick one", ["A", "B"], custom=False)
+            w.query_one("#aq-options").focus()
+
+        async def on_ask_question_widget_answered(self, message: AskQuestionWidget.Answered) -> None:
+            results.append(message.value)
+            self.exit()
 
     async with _App().run_test(headless=True) as pilot:
         await pilot.pause()
@@ -91,48 +68,64 @@ async def test_escape_returns_none() -> None:
 
 
 @pytest.mark.asyncio
-async def test_multi_select_confirm() -> None:
-    """Multi-select: Space toggles, Confirm submits selected labels."""
+async def test_number_hotkey_selects_option() -> None:
+    """Pressing number keys selects the corresponding option."""
     from textual.app import App
 
-    from ollama_chat.screens import QuestionScreen
+    from ollama_chat.widgets.ask_question_widget import AskQuestionWidget
 
     results: list = []
 
     class _App(App):
-        def on_mount(self) -> None:
-            async def _show() -> None:
-                result = await self.push_screen_wait(QuestionScreen(MULTI_Q))
-                results.append(result)
-                self.exit()
+        def compose(self):  # type: ignore[override]
+            yield AskQuestionWidget()
 
-            self.run_worker(_show())
+        def on_mount(self) -> None:
+            w = self.query_one(AskQuestionWidget)
+            w.display = True
+            w.load_question("Pick one", ["A", "B"], custom=False)
+            w.query_one("#aq-options").focus()
+
+        async def on_ask_question_widget_answered(self, message: AskQuestionWidget.Answered) -> None:
+            results.append(message.value)
+            self.exit()
 
     async with _App().run_test(headless=True) as pilot:
         await pilot.pause()
-        await pilot.press("space")  # toggle first item (A)
-        await pilot.press("down")
-        await pilot.press("space")  # toggle second item (B)
-        await pilot.click("#question-confirm")
+        await pilot.press("2")
         await pilot.pause()
 
-    assert results == [["A", "B"]]
+    assert results == ["B"]
 
 
 @pytest.mark.asyncio
-async def test_custom_entry_visible_when_enabled() -> None:
-    """When custom=True, the last option in the list is 'Type your own answer...'."""
+async def test_custom_input_submits_value() -> None:
+    """Submitting the custom Input posts Answered(value) when non-empty."""
     from textual.app import App
 
-    from ollama_chat.screens import QuestionScreen
+    from ollama_chat.widgets.ask_question_widget import AskQuestionWidget
+
+    results: list = []
 
     class _App(App):
-        async def on_mount(self) -> None:
-            await self.push_screen(QuestionScreen(CUSTOM_Q))
+        def compose(self):  # type: ignore[override]
+            yield AskQuestionWidget()
+
+        def on_mount(self) -> None:
+            w = self.query_one(AskQuestionWidget)
+            w.display = True
+            w.load_question("Type a value", ["One", "Two"], custom=True)
+            inp = w.query_one("#aq-custom-input")
+            inp.value = "pytest"
+            inp.focus()
+
+        async def on_ask_question_widget_answered(self, message: AskQuestionWidget.Answered) -> None:
+            results.append(message.value)
+            self.exit()
 
     async with _App().run_test(headless=True) as pilot:
         await pilot.pause()
-        # The OptionList should have 2 options: the real one + custom
-        option_list = pilot.app.screen.query_one("#question-options")
-        assert option_list.option_count == 2
-        await pilot.press("escape")
+        await pilot.press("enter")
+        await pilot.pause()
+
+    assert results == ["pytest"]

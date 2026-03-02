@@ -78,9 +78,9 @@ class TestQuestionWiring(unittest.IsolatedAsyncioTestCase):
         def _mock_reply(qid, answers):
             replied.append((qid, answers))
 
-        # Stub app with push_screen_wait returning ["A"]
+        # Stub app with _ask_inline_question returning ["A"]
         class _StubApp:
-            async def push_screen_wait(self, screen):
+            async def _ask_inline_question(self, question_info):  # noqa: ANN001
                 return ["A"]
 
             async def _run_question_sequence(self, payload):
@@ -89,8 +89,8 @@ class TestQuestionWiring(unittest.IsolatedAsyncioTestCase):
                 all_answers: list[list[str]] = []
                 for q in questions_data:
 
-                    # In real app this calls push_screen_wait; here we stub it
-                    result = await self.push_screen_wait(None)
+                    # In real app this calls _ask_inline_question; here we stub it
+                    result = await self._ask_inline_question(q)
                     all_answers.append(result or [])
                 question_service.reply(qid, all_answers)
 
