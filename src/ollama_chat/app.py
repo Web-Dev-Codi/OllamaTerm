@@ -1173,12 +1173,23 @@ class OllamaChatApp(App[None]):
     def _on_question_asked(self, event_name: str, payload: dict[str, Any]) -> None:
         """Handle question.asked event from question_service.
 
-        Uses run_worker so the coroutine runs on Textual's main event loop
-        with a proper worker context — required by push_screen_wait, and safe
-        to call from any thread (including the tool-executor thread that fires
-        this callback via _run_async_from_sync).
+        Schedules _run_question_sequence on Textual's main event loop via
+        call_from_thread + run_worker. The question_service.ask() call may run
+        in a background thread (tools are executed via asyncio.to_thread), so
+        this handler must not call run_worker directly from that thread.
         """
-        self.run_worker(self._run_question_sequence(payload))
+        def _start_question_worker() -> None:
+            self.run_worker(self._run_question_sequence(payload))
+
+        # call_from_thread is thread-safe and will invoke the closure on the
+        # main Textual thread, regardless of which thread published the event.
+        try:
+            self.call_from_thread(_start_question_worker)
+        except Exception as exc:  # pragma: no cover - defensive logging
+            LOGGER.debug(
+                "app.question_worker.start_failed",
+                extra={"event": event_name, "error": str(exc)},
+            )
 
     async def _run_question_sequence(self, payload: dict[str, Any]) -> None:
         """Show QuestionScreen modals sequentially and reply to question_service."""
