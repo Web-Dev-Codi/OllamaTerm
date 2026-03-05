@@ -1,11 +1,27 @@
-# OllamaTerm
+<p align="center">
+  <h1 align="center">OllamaTerm</h1>
+  <p align="center">A keyboard-first, fully local AI chat interface for the terminal</p>
+</p>
 
-> **A keyboard-first, fully local AI chat interface for the terminal.**  
-> Powered by [Ollama](https://ollama.com/) and [Textual](https://github.com/Textualize/textual) — no cloud, no API keys, no data leaving your machine.
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white" alt="Python"></a>
+  <a href="https://ollama.com/"><img src="https://img.shields.io/badge/Ollama-Compatible-FF6F00.svg?logo=ollama&logoColor=white" alt="Ollama"></a>
+  <a href="https://github.com/Web-Dev-Codi/OllamaTerm/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+  <a href="https://github.com/Web-Dev-Codi/OllamaTerm/stargazers"><img src="https://img.shields.io/github/stars/Web-Dev-Codi/OllamaTerm?color=yellow&logo=github" alt="Stars"></a>
+  <a href="https://github.com/Web-Dev-Codi/OllamaTerm/issues"><img src="https://img.shields.io/github/issues/Web-Dev-Codi/OllamaTerm?color=0088ff" alt="Issues"></a>
+</p>
+
+<p align="center">
+  Powered by <a href="https://ollama.com/">Ollama</a> and <a href="https://github.com/Textualize/textual">Textual</a> — no cloud, no API keys, no data leaving your machine.
+</p>
+
+---
+
+## 🖥️ Preview
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  OllamaTerm                         [llama3.2] ● Online │
+│  OllamaTerm                         [llama3.2] 🟢 Online │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  You  ────────────────────────────────────────────────  │
@@ -18,81 +34,69 @@
 │  for I/O, then resuming where they left off...          │
 │                                                         │
 ├─────────────────────────────────────────────────────────┤
-│  > Type a message...                     ctrl+p for help│
+│  > Type a message...                         ⌘P for help│
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Table of Contents
+## 📑 Table of Contents
 
 - [OllamaTerm](#ollamaterm)
-  - [Table of Contents](#table-of-contents)
-  - [Why OllamaTerm?](#why-ollamaterm)
-  - [Features](#features)
-    - [Core Chat](#core-chat)
-    - [Model Management](#model-management)
-    - [Conversation Persistence](#conversation-persistence)
-    - [Capabilities](#capabilities)
-    - [Interface \& Integration](#interface--integration)
-  - [Requirements](#requirements)
-  - [Installation](#installation)
-    - [From source (recommended)](#from-source-recommended)
-    - [Developer / contributor install](#developer--contributor-install)
-    - [Arch Linux (PKGBUILD)](#arch-linux-pkgbuild)
-  - [Quick Start](#quick-start)
-  - [Configuration](#configuration)
-    - [Config File Location](#config-file-location)
-    - [All Options](#all-options)
-  - [Keybinds](#keybinds)
-  - [Capabilities](#capabilities-1)
-    - [Chain-of-thought reasoning](#chain-of-thought-reasoning)
-    - [Tool calling](#tool-calling)
-    - [Web search](#web-search)
-    - [Vision / image attachments](#vision--image-attachments)
-    - [Context window alignment](#context-window-alignment)
-  - [Desktop Integration](#desktop-integration)
-    - [Hyprland + Ghostty](#hyprland--ghostty)
-    - [Desktop Entry](#desktop-entry)
-  - [Packaging / Building](#packaging--building)
-    - [Local wheel build (isolated)](#local-wheel-build-isolated)
-    - [Arch package (PKGBUILD)](#arch-package-pkgbuild)
-  - [Development](#development)
-  - [Troubleshooting](#troubleshooting)
-  - [License](#license)
+  - [Preview](#-preview)
+  - [Table of Contents](#-table-of-contents)
+  - [Why OllamaTerm?](#-why-ollamaterm)
+  - [Features](#-features)
+  - [Requirements](#-requirements)
+  - [Installation](#-installation)
+  - [Quick Start](#-quick-start)
+  - [Configuration](#️-configuration)
+  - [Keybinds](#️-keybinds)
+  - [Capabilities](#-capabilities)
+  - [Desktop Integration](#️-desktop-integration)
+  - [Packaging / Building](#-packaging--building)
+  - [Development](#-development)
+  - [Troubleshooting](#️-troubleshooting)
+  - [Contributing](#-contributing)
+  - [License](#-license)
+  - [Show Your Support](#-show-your-support)
+  - [Acknowledgments](#-acknowledgments)
 
 ---
 
-## Why OllamaTerm?
+## ❓ Why OllamaTerm?
 
-| | OllamaTerm | Web-based chat UIs |
-|---|---|---|
-| **Privacy** | 100% local — data never leaves your machine | Depends on provider |
-| **Offline use** | Works after initial model pull | Requires internet |
-| **Cost** | Free (you own the hardware) | Often metered |
-| **Speed** | No network latency to the model | Round-trip to cloud |
-| **Customization** | Full TOML config, rebindable keys | Usually limited |
-| **Terminal native** | Keyboard-first, scriptable | Browser tab |
+| Feature | OllamaTerm | Web-based chat UIs |
+|:--------|:-----------|:-------------------|
+| 🔒 **Privacy** | 100% local — data never leaves your machine | Depends on provider |
+| 📡 **Offline use** | Works after initial model pull | Requires internet |
+| 💰 **Cost** | Free (you own the hardware) | Often metered |
+| ⚡ **Speed** | No network latency to the model | Round-trip to cloud |
+| 🎛️ **Customization** | Full TOML config, rebindable keys | Usually limited |
+| 💻 **Terminal native** | Keyboard-first, scriptable | Browser tab |
 
 ---
 
-## Features
+## ✨ Features
 
-### Core Chat
+#### 💬 Core Chat
+
+> [!NOTE]
+> All responses stream in real-time with smooth, flicker-free rendering.
 
 - **Streaming responses** with batched rendering for smooth, flicker-free output
 - **Animated "thinking" placeholder** shown while the model starts generating
 - **Bounded context window** — automatically trims history to stay within token limits
 - **Retry with backoff** for resilient streaming on transient Ollama failures
 
-### Model Management
+#### 🤖 Model Management
 
 - **Multi-model config** — list multiple models and switch at runtime
 - **Clickable model picker** in the status bar, or `ctrl+m` keyboard shortcut
 - **Auto-pull on startup** — optionally pull the configured model if it is not present
 - **Traffic-light connection indicator** — always know if Ollama is reachable
 
-### Conversation Persistence
+#### 📁 Conversation Persistence
 
 - **Save and load** conversation history (JSON format)
 - **Export** conversations as Markdown transcripts
@@ -100,7 +104,10 @@
 - **Copy** the latest assistant reply to clipboard in one shortcut
 - **Conversation picker & auto-save** — quickly switch between saved chats (via `/conversations`) with automatic saving enabled by default
 
-### Capabilities
+#### 🧠 Capabilities
+
+> [!TIP]
+> Capabilities are auto-detected from Ollama's `/api/show` endpoint — no manual configuration needed!
 
 - **Auto-detected per model** — thinking, tool calling, and vision support are read from Ollama's `/api/show` at load time; no config required
 - **Seamless model switching** — capabilities update instantly when you switch models mid-conversation
@@ -111,7 +118,7 @@
 - **Vision / image attachments** for vision-capable models (e.g. `gemma3`, `llava`)
 - **Context window alignment** — `max_context_tokens` is forwarded to Ollama as `options.num_ctx` so the server-side context window always matches the client-side trim budget
 
-### Interface & Integration
+#### 🎨 Interface & Integration
 
 - **Command palette** (`ctrl+p`) with searchable list of all actions
 - **Fully configurable keybinds** via TOML
@@ -123,38 +130,41 @@
 
 ---
 
-## Requirements
+## 📋 Requirements
 
 | Requirement | Details |
-|---|---|
-| Python | 3.11 or newer |
-| Ollama | Installed and on your `PATH` ([install guide](https://ollama.com/download)) |
-| Ollama daemon | Running — `ollama serve` |
-| Internet | Only needed once, to pull models |
+|:------------|:--------|
+| 🐍 **Python** | 3.11 or newer |
+| 🦙 **Ollama** | Installed and on your `PATH` ([install guide](https://ollama.com/download)) |
+| ▶️ **Ollama daemon** | Running — `ollama serve` |
+| 🌐 **Internet** | Only needed once, to pull models |
 
 ---
 
-## Installation
+## 📦 Installation
 
-### From source (recommended)
+### 🔧 From source (recommended)
 
 ```bash
+# Clone the repository
 git clone https://github.com/Web-Dev-Codi/OllamaTerm.git
 cd OllamaTerm
 
+# Create and activate virtual environment
 python -m venv .venv
 source .venv/bin/activate
 
+# Install the package
 pip install -e .
 ```
 
-### Developer / contributor install
+### 👨‍💻 Developer / contributor install
 
 ```bash
 pip install -e '.[dev]'
 ```
 
-### Arch Linux (PKGBUILD)
+### 📦 Arch Linux (PKGBUILD)
 
 A `PKGBUILD` is included for building a native Arch package:
 
@@ -164,23 +174,23 @@ makepkg -si
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-**1. Start Ollama and pull a model**
+### 1️⃣ Start Ollama and pull a model
 
 ```bash
 ollama serve
 ollama pull llama3.2
 ```
 
-**2. (Optional) Copy the example config**
+### 2️⃣ (Optional) Copy the example config
 
 ```bash
 mkdir -p ~/.config/ollamaterm
 cp config.example.toml ~/.config/ollamaterm/config.toml
 ```
 
-**3. Launch the app**
+### 3️⃣ Launch the app
 
 ```bash
 ollamaterm
@@ -188,23 +198,23 @@ ollamaterm
 python -m ollama_chat
 ```
 
-**4. Basic workflow**
+### 4️⃣ Basic workflow
 
 | Action | How |
-|---|---|
-| Send a message | Type in the input field → `ctrl+enter` |
-| Switch model | Click `Model` in the status bar, or `ctrl+m` |
-| New conversation | `ctrl+n` |
-| Search messages | `ctrl+f`, type query, press again to cycle |
-| Copy last reply | `ctrl+y` |
-| Open all actions | `ctrl+p` |
-| Quit | `ctrl+q` |
+|:-------|:------|
+| 💬 Send a message | Type in the input field → `ctrl+enter` |
+| 🔄 Switch model | Click `Model` in the status bar, or `ctrl+m` |
+| 📄 New conversation | `ctrl+n` |
+| 🔍 Search messages | `ctrl+f`, type query, press again to cycle |
+| 📋 Copy last reply | `ctrl+y` |
+| 🎯 Open all actions | `ctrl+p` |
+| ❌ Quit | `ctrl+q` |
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
-### Config File Location
+### 📍 Config File Location
 
 ```
 ~/.config/ollamaterm/config.toml
@@ -341,9 +351,10 @@ max_tool_iterations = 10
 
 ---
 
-## Keybinds
+## ⌨️ Keybinds
 
-All keybinds are rebindable in `[keybinds]`. These are the defaults:
+> [!NOTE]
+> All keybinds are rebindable in `[keybinds]`. These are the defaults:
 
 | Keybind | Action |
 |---|---|
@@ -364,18 +375,20 @@ All keybinds are rebindable in `[keybinds]`. These are the defaults:
 
 ---
 
-## Capabilities
+## 🔮 Capabilities
 
-Thinking, tool calling, and vision support are **detected automatically** from
-Ollama's `/api/show` endpoint each time a model is loaded or switched. No
-manual configuration is required — the status bar icons (🧠 🔧 👁) reflect
-what the active model actually supports.
+> [!IMPORTANT]
+> Thinking, tool calling, and vision support are **detected automatically** from
+> Ollama's `/api/show` endpoint each time a model is loaded or switched. No
+> manual configuration is required — the status bar icons (🧠 🔧 👁) reflect
+> what the active model actually supports.
 
+> [!NOTE]
 > **Requires Ollama ≥ 0.6** for capability metadata. Older Ollama versions fall
 > back gracefully — all features are assumed enabled and gated only by whether
 > the model responds correctly.
 
-### Chain-of-thought reasoning
+#### 🧠 Chain-of-thought reasoning
 
 Automatically active when the model reports `"thinking"` in its capabilities
 (e.g. `qwen3`, `deepseek-r1`, `deepseek-v3.1`, `gpt-oss`). The model's
@@ -385,7 +398,7 @@ internal reasoning trace is shown above the final answer when
 **GPT-OSS note:** GPT-OSS requires a string think level rather than a boolean.
 OllamaTerm detects GPT-OSS by name and automatically sends `think="medium"`.
 
-### Tool calling
+#### 🔧 Tool calling
 
 Automatically active when the model reports `"tools"` in its capabilities.
 The agent loop allows the model to invoke tools multiple times before producing
@@ -404,7 +417,7 @@ coding toolset designed for agentic workflows:
 These tools are controlled by the `[tools]` config section and are constrained
 by workspace-root path checks, command timeouts, and output truncation limits.
 
-#### Function tools with Ollama (alpha/experimental)
+##### 🔌 Function tools with Ollama (alpha/experimental)
 
 OllamaTerm passes tools to the Ollama Python SDK in two forms:
 
@@ -485,20 +498,20 @@ Read a file window → Call tool: read { "path": "src/main.py", "offset": 1, "li
 Make an edit → Call tool: edit { "path": "README.md", "old_text": "foo", "new_text": "bar", "replace_all": true }
 ```
 
-### Web search
+#### 🌐 Web search
 
 Set `web_search_enabled = true` in `[capabilities]` and provide an Ollama API
 key (via `web_search_api_key` or the `OLLAMA_API_KEY` environment variable).
 Web search also requires the active model to support tool calling
 (auto-detected) — it is silently disabled for models that do not.
 
-### Vision / image attachments
+#### 👁️ Vision / image attachments
 
 Automatically active when the model reports `"vision"` in its capabilities
 (e.g. `gemma3`, `llava`). Attach images with `/image <path>` in the input box
 or use the Attach button in the toolbar. Use `/file <path>` or the file attachment button to include non-image context files.
 
-### Context window alignment
+#### 📏 Context window alignment
 
 `max_context_tokens` (in `[ollama]`) serves two purposes:
 
@@ -510,9 +523,9 @@ Increase this value for models with larger native context windows (e.g. set
 
 ---
 
-## Desktop Integration
+## 🖥️ Desktop Integration
 
-### Hyprland + Ghostty
+### 🌀 Hyprland + Ghostty
 
 The app sets the terminal window class from `app.class` on startup.
 For the most reliable behavior on Wayland, also pass the class directly to
@@ -533,7 +546,7 @@ windowrulev2 = opacity 0.95,   class:^(ollamaterm-tui)$
 bind = $mainMod, O, exec, ghostty --class=ollamaterm-tui -e ollamaterm
 ```
 
-### Desktop Entry
+### 📑 Desktop Entry
 
 Create `~/.local/share/applications/ollamaterm.desktop`:
 
@@ -550,9 +563,9 @@ Categories=Utility;TerminalEmulator;Development;
 
 ---
 
-## Packaging / Building
+## 📦 Packaging / Building
 
-### Local wheel build (isolated)
+### 🎡 Local wheel build (isolated)
 
 ```bash
 python -m pip install build
@@ -571,7 +584,7 @@ python -m pip install -U setuptools wheel build
 python -m pip install --pre -U setuptools
 ```
 
-### Arch package (PKGBUILD)
+### 🏗️ Arch package (PKGBUILD)
 
 This repo ships a `PKGBUILD` that builds without network access using system makedepends:
 
@@ -584,7 +597,7 @@ The `build()` step uses `python -m build --wheel --no-isolation` so it relies on
 
 ---
 
-## Development
+## 👨‍💻 Development
 
 ```bash
 # Full test suite
@@ -611,7 +624,7 @@ ruff check . && black --check . && mypy ollama_chat/ && pytest -q
 
 ---
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 | Symptom | Fix |
 |---|---|
@@ -628,6 +641,55 @@ ruff check . && black --check . && mypy ollama_chat/ && pytest -q
 
 ---
 
-## License
+---
 
-[MIT](LICENSE) — © Web-Dev-Codi
+## 🤝 Contributing
+
+Contributions are always welcome! Here's how you can help:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please read the [Code of Conduct](CODE_OF_CONDUCT.md) and review our [Contributing Guide](CONTRIBUTING.md) for details.
+
+---
+
+## 📄 License
+
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License">
+  </a>
+  <br>
+  <b>MIT License — © Web-Dev-Codi</b>
+</p>
+
+---
+
+## ⭐ Show Your Support
+
+If you find OllamaTerm useful, please consider giving it a star!
+
+<p align="center">
+  <a href="https://github.com/Web-Dev-Codi/OllamaTerm/stargazers">
+    <img src="https://img.shields.io/github/stars/Web-Dev-Codi/OllamaTerm?style=social" alt="Star this project">
+  </a>
+</p>
+
+---
+
+## 🙏 Acknowledgments
+
+- [Ollama](https://ollama.com/) — Local LLM runtime
+- [Textual](https://github.com/Textualize/textual) — TUI framework
+
+---
+
+<p align="center">
+  <sub>Built with ❤️ and lots of ☕ by the OllamaTerm contributors</sub>
+  <br>
+  <sub>🚀 Made for the terminal, by terminal lovers</sub>
+</p>
