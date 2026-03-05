@@ -40,6 +40,13 @@
 
 ---
 
+## ⚠️ Disclaimer
+
+> [!WARNING]
+> **OllamaTerm is highly experimental software.** This project is under active development and may contain bugs, incomplete features, or breaking changes. Use at your own risk, especially when using coding tools that can modify files. Always review changes before committing and maintain backups of important data.
+
+---
+
 ## 📑 Table of Contents
 
 - [OllamaTerm](#ollamaterm)
