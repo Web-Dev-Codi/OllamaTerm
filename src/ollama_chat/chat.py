@@ -56,7 +56,7 @@ _TOOL_USE_POLICY = (
 _QUESTION_USE_POLICY = """
 
 CLARIFYING QUESTIONS POLICY:
-You have access to a 'question' tool. Use it proactively when:
+You have access to an 'ask_user_question' tool. Use it proactively when:
 
 ALWAYS ASK WHEN:
 • User request is ambiguous ("fix the bug", "add auth", "optimize code")
@@ -77,13 +77,10 @@ QUESTION QUALITY GUIDELINES:
 • Questions should be answerable in <10 seconds
 
 FORMAT REQUIREMENTS (CRITICAL):
-• Each question MUST have a 'header' field (short label, max 30 chars)
-• Each question MUST have a 'question' field (full question text)
-• 'options' MUST be a list of objects, NOT strings
-• Each option MUST have both 'label' and 'description' fields
-• Example: {"label": "Redis", "description": "Fast, external, scalable"}
-• WRONG: ["Redis", "Memcached"] ❌
-• CORRECT: [{"label": "Redis", "description": "Fast, external"}, ...] ✓
+• The tool call MUST include a 'question' string
+• The tool call MUST include an 'options' list of 2-5 strings
+• WRONG: {"options": [{"label": "Redis"}]} ❌
+• CORRECT: {"options": ["Redis", "Memcached"]} ✓
 
 WHEN NOT TO ASK (rare):
 • Task is completely unambiguous ("write factorial function")
@@ -102,7 +99,7 @@ EXAMPLES OF PROPER QUESTION-ASKING:
 Example 1 - Ambiguous Code Target:
 User: "Refactor the database connection code"
 You (thinking): "Multiple files handle DB connections. Need to ask which."
-You (action): Call question tool with:
+You (action): Call ask_user_question tool with:
   question: "Which database connection code should I refactor?"
   options: [
     "Main connection pool (db/pool.py)",
@@ -116,7 +113,7 @@ You: "I'll refactor the connection pool in db/pool.py focusing on connection reu
 Example 2 - Technology Choice:
 User: "Add caching to the API endpoints"
 You (thinking): "Many caching strategies exist. Should ask."
-You (action): Call question tool with:
+You (action): Call ask_user_question tool with:
   question: "Which caching backend should I use?"
   options: [
     "Redis (fast, external, scalable)",
@@ -143,8 +140,10 @@ def factorial(n: int) -> int:
 
 # Tools that are I/O-bound and fast - don't need thread pool overhead
 # These tools complete quickly (<10ms) and don't block the event loop.
-# NOTE: Tools that may wait on user interaction (e.g. "question") MUST NOT be
-# listed here, otherwise they will block the Textual event loop and freeze the UI.
+# NOTE: Tools that may wait on user interaction (e.g. ask_user_question) MUST NOT be
+# listed here. The tool execution path is synchronous at this layer; running an
+# interactive tool on the main event loop would block Textual from rendering the
+# question UI and handling input.
 FAST_SYNC_TOOLS = {
     "read",
     "write",
@@ -763,9 +762,10 @@ class OllamaChat:
             # Build policy text - start with base tool use policy
             policy_text = _TOOL_USE_POLICY
 
-            # Check if question tool is available in this request
+            # Check if ask_user_question tool is available in this request
             has_question_tool = any(
-                t.get("function", {}).get("name") == "question" for t in formatted_tools
+                t.get("function", {}).get("name") == "ask_user_question"
+                for t in formatted_tools
             )
 
             # Add question-specific guidance if tool is present

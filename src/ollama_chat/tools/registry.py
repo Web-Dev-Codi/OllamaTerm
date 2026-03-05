@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .apply_patch_tool import ApplyPatchTool
+from .ask_user_question_tool import AskUserQuestionTool
 from .base import Tool
 from .bash_tool import BashTool
 from .batch_tool import BatchTool
@@ -16,7 +17,6 @@ from .ls_tool import ListTool
 from .lsp_tool import LspTool
 from .multiedit_tool import MultiEditTool
 from .plan_tool import PlanExitTool
-from .question_tool import QuestionTool
 from .read_tool import ReadTool
 from .skill_tool import SkillTool
 from .task_tool import TaskTool
@@ -83,7 +83,7 @@ class ToolRegistry:
         reg = cls()
         # Built-in tool order roughly as specified
         reg.register(InvalidTool())
-        reg.register(QuestionTool())
+        reg.register(AskUserQuestionTool())
         reg.register(BashTool())
         reg.register(ReadTool())
         reg.register(GlobTool())

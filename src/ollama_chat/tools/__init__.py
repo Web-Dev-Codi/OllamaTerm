@@ -22,7 +22,7 @@ __all__ = [
     "batch_tool",
     "lsp_tool",
     "plan_tool",
-    "question_tool",
+    "ask_user_question_tool",
     "todo_tool",
     "skill_tool",
     "apply_patch_tool",
